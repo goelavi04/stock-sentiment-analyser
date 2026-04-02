@@ -14,6 +14,15 @@ Enter any stock ticker (AAPL, TSLA, NVDA...) and the app will:
 4. Display a live sentiment dashboard with scores and colour-coded badges
 
 ---
+## Screenshots
+
+**Search Screen**
+![Search Screen](screenshots/home.png)
+
+**Results Dashboard**
+![Results Dashboard](screenshots/results.png)
+
+---
 
 ## How It Works
 
