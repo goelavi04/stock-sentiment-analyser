@@ -1,6 +1,5 @@
 # Stock News Sentiment Analyser
 
-> **Project 06** of my 30-Project AI Portfolio 
 > An AI-powered pipeline that scrapes live stock headlines, analyses financial sentiment using FinBERT, stores results in Airtable, and displays them in a real-time web dashboard.
 
 ---
