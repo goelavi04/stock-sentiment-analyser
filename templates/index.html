@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Sentiment Analyser</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #080810;
+      color: #e4e2f0;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle { color: #5a566e; margin-bottom: 32px; font-size: 14px; }
+
+    /* ── Search bar ── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .ticker-input {
+      flex: 1;
+      background: #0f0f1c;
+      border: 1px solid #2a2a40;
+      border-radius: 12px;
+      padding: 14px 18px;
+      color: #e4e2f0;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+      letter-spacing: 0.08em;
+    }
+
+    .ticker-input:focus { border-color: #10b981; }
+    .ticker-input::placeholder { color: #3d3a55; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+    .analyse-btn {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .analyse-btn:hover    { opacity: 0.85; }
+    .analyse-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .status { font-size: 13px; color: #10b981; text-align: center; min-height: 20px; margin-bottom: 20px; }
+
+    /* ── Summary card ── */
+    .summary-card {
+      display: none;
+      background: #0f0f1c;
+      border: 1px solid #2a2a40;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .summary-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .ticker-label {
+      font-size: 1.6rem;
+      font-weight: 900;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .overall-badge {
+      padding: 8px 20px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .badge-positive { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-negative { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-neutral  { background: rgba(107,114,128,0.15);color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+    /* Sentiment bar */
+    .bar-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .bar-item { text-align: center; }
+
+    .bar-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #5a566e;
+      margin-bottom: 6px;
+    }
+
+    .bar-track {
+      height: 6px;
+      background: #1c1c2e;
+      border-radius: 100px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .bar-fill { height: 100%; border-radius: 100px; transition: width 0.8s ease; }
+    .fill-pos { background: #10b981; }
+    .fill-neg { background: #ef4444; }
+    .fill-neu { background: #6b7280; }
+
+    .bar-count {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: 'Courier New', monospace;
+    }
+
+    .count-pos { color: #10b981; }
+    .count-neg { color: #ef4444; }
+    .count-neu { color: #6b7280; }
+
+    /* ── Headlines ── */
+    .headlines-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #3d3a55;
+      margin-bottom: 14px;
+    }
+
+    .headline-card {
+      background: #0a0a14;
+      border: 1px solid #1c1c2e;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .sentiment-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .dot-positive { background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+    .dot-negative { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+    .dot-neutral  { background: #6b7280; }
+
+    .headline-text { font-size: 13px; line-height: 1.6; flex: 1; }
+
+    .headline-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    .headline-date { font-size: 11px; color: #3d3a55; font-family: 'Courier New', monospace; }
+
+    .score-chip {
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .chip-pos { background: rgba(16,185,129,0.1);  color: #10b981; }
+    .chip-neg { background: rgba(239,68,68,0.1);   color: #ef4444; }
+    .chip-neu { background: rgba(107,114,128,0.1); color: #9ca3af; }
+
+    .empty { text-align: center; color: #3d3a55; font-size: 14px; padding: 40px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Stock Sentiment 📈</h1>
+    <p class="subtitle">Enter any stock ticker — AI reads recent news and tells you the market mood</p>
+
+    <div class="search-row">
+      <input class="ticker-input" id="tickerInput" type="text"
+             placeholder="NVDA, AAPL, TSLA, RELIANCE..."
+             onkeydown="if(event.key==='Enter') analyse()">
+      <button class="analyse-btn" id="analyseBtn" onclick="analyse()">Analyse →</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <!-- Summary -->
+    <div class="summary-card" id="summaryCard">
+      <div class="summary-header">
+        <div class="ticker-label" id="tickerLabel"></div>
+        <div class="overall-badge" id="overallBadge"></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-item">
+          <div class="bar-label">Positive</div>
+          <div class="bar-track"><div class="bar-fill fill-pos" id="posBar" style="width:0%"></div></div>
+          <div class="bar-count count-pos" id="posCount">0</div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">Neutral</div>
+          <div class="bar-track"><div class="bar-fill fill-neu" id="neuBar" style="width:0%"></div></div>
+          <div class="bar-count count-neu" id="neuCount">0</div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">Negative</div>
+          <div class="bar-track"><div class="bar-fill fill-neg" id="negBar" style="width:0%"></div></div>
+          <div class="bar-count count-neg" id="negCount">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Headlines -->
+    <div class="headlines-title" id="headlinesTitle" style="display:none">Recent Headlines</div>
+    <div id="headlinesList"></div>
+  </div>
+
+  <script>
+    async function analyse() {
+      const input  = document.getElementById("tickerInput");
+      const btn    = document.getElementById("analyseBtn");
+      const status = document.getElementById("status");
+      const ticker = input.value.trim().toUpperCase();
+
+      if (!ticker) { status.textContent = "Please enter a ticker!"; return; }
+
+      btn.disabled    = true;
+      btn.textContent = "Analysing...";
+      status.textContent = `Fetching news for ${ticker} and running FinBERT...`;
+
+      document.getElementById("summaryCard").style.display   = "none";
+      document.getElementById("headlinesTitle").style.display = "none";
+      document.getElementById("headlinesList").innerHTML = "";
+
+      try {
+        const response = await fetch("/analyse", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ ticker })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          status.textContent = err.detail || "Something went wrong.";
+          return;
+        }
+
+        const data = await response.json();
+        renderResults(data);
+        status.textContent = `✓ Analysed ${data.total} headlines for ${data.ticker} — saved to Airtable`;
+
+      } catch (err) {
+        status.textContent = "Error connecting to server.";
+      }
+
+      btn.disabled    = false;
+      btn.textContent = "Analyse →";
+    }
+
+    function renderResults(data) {
+      const total = data.total;
+
+      // Summary card
+      document.getElementById("tickerLabel").textContent = data.ticker;
+
+      const badge = document.getElementById("overallBadge");
+      badge.textContent = data.overall.toUpperCase();
+      badge.className   = `overall-badge badge-${data.overall}`;
+
+      const pct = n => total ? Math.round((n / total) * 100) : 0;
+      document.getElementById("posBar").style.width   = pct(data.counts.positive) + "%";
+      document.getElementById("neuBar").style.width   = pct(data.counts.neutral)  + "%";
+      document.getElementById("negBar").style.width   = pct(data.counts.negative) + "%";
+      document.getElementById("posCount").textContent = data.counts.positive;
+      document.getElementById("neuCount").textContent = data.counts.neutral;
+      document.getElementById("negCount").textContent = data.counts.negative;
+
+      document.getElementById("summaryCard").style.display    = "block";
+      document.getElementById("headlinesTitle").style.display = "block";
+
+      // Headlines
+      const list = document.getElementById("headlinesList");
+      list.innerHTML = data.results.map((r, i) => `
+        <div class="headline-card" style="animation-delay:${i * 0.05}s">
+          <div class="sentiment-dot dot-${r.sentiment}"></div>
+          <div style="flex:1">
+            <div class="headline-text">${r.headline}</div>
+            <div class="headline-meta">
+              <span class="headline-date">${r.date}</span>
+              <span class="score-chip chip-${r.sentiment}">${r.sentiment} · ${(r.score * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+  </script>
+</body>
+</html>
